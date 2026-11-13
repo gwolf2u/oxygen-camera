@@ -94,7 +94,12 @@ def main():
         local_in = args.cache / "inputs" / entry["name"]
         if local_in.exists() and hashlib.sha256(local_in.read_bytes()).hexdigest() == entry["sha256"]:
             continue
-        url = entry.get("url") or source_url(entry["source"], entry["src"])
+        url = entry.get("url")
+        if not url:
+            missing = [k for k in ("source", "src") if k not in entry]
+            if missing:
+                raise SystemExit(f"manifest entry missing {missing}: {entry!r}")
+            url = source_url(entry["source"], entry["src"])
         jobs.append((local_in, entry["sha256"], [url], entry["name"]))
     with concurrent.futures.ThreadPoolExecutor(8) as pool:
         fetched = sum(pool.map(lambda job: ensure(*job), jobs))
